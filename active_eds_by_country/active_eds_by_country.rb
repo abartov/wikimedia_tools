@@ -23,14 +23,31 @@ end
 def make_report
   repname = "report_on_#{@fname}#{@bucket ? '_bucketed' : ''}.txt"
   puts "Outputting #{repname}"
-  File.open(repname, "w") {|f|
+  File.open(repname, 'w') {|f|
     f.puts "Report on #{@bucket ? 'bucketed ': ''}active editor counts as average between #{@eds[-30][0]} and #{@eds[-1][0]} from file #{@fname}\n"
     f.puts "==Countries by Alphabet=="
+
     format = "%-40s\t%15s\t%15s\n"
     @active.keys.sort.each {|k| f.printf format, k, @active[k].nil? ? 0 : b(@active[k]), @very_active[k].nil? ? 0 : b(@very_active[k])}
     f.puts "\n==Countries by Active Editor count=="
     sorted_by_active = @active.sort_by {|k,v| v}
     sorted_by_active.reverse.each {|k| f.printf format, k[0], k[1].nil? ? 0 : b(k[1]), @very_active[k[0]].nil? ? 0 : b(@very_active[k[0]])}
+  }
+end
+def make_wiki_report
+  repname = "report_on_#{@fname}_bucketed.wiki"
+  puts "Outputting wikified report at #{repname}"
+  File.open(repname, 'w') {|f|
+    f.puts "Report on bucketed active editor counts as average between #{@eds[-30][0]} and #{@eds[-1][0]} from file #{@fname}\n"
+    f.puts '==Countries by Alphabet=='
+    f.puts "{| class=\"wikitable sortable\"\n|-\n! Country !! Active (5+/month) !! Very active (100+/month)"
+    @active.keys.sort.each {|k| f.puts "|-\n| #{k} || #{@active[k].nil? ? 0 : b(@active[k])} || #{@very_active[k].nil? ? 0 : b(@very_active[k])}"}
+    f.puts '|}'
+    f.puts "\n==Countries by Active Editor count=="
+    f.puts "{| class=\"wikitable sortable\"\n|-\n! Country !! Active (5+/month) !! Very active (100+/month)"
+    sorted_by_active = @active.sort_by {|k,v| v}
+    sorted_by_active.reverse.each {|k| f.puts "|-\n| #{k[0]} || #{k[1].nil? ? 0 : b(k[1])} || #{@very_active[k[0]].nil? ? 0 : b(@very_active[k[0]])}" }
+    f.puts '|}'
   }
 end
 
@@ -73,5 +90,5 @@ puts "done!"
 make_report # without bucketing
 @bucket = true
 make_report # then bucketed
-
+make_wiki_report # make a wiki-ready version of the bucketed numbers
 puts "done!"
