@@ -72,6 +72,7 @@ while col < lastcol do
   which = which_col(col)
   next if which == ALL
   country = @eds[0][col][0..@eds[0][col].index('(')-1]
+  country = 'Curaçao' if country =~ /Cura.ao/ # manual fix for Curaçao
   total = 0
   for i in 1..30 do
     val = (@eds[-i][col].to_i or 0)
