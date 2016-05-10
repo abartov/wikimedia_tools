@@ -50,7 +50,14 @@ def make_wiki_report
     f.puts '|}'
   }
 end
-
+def make_bucketed_csv
+  csvname = "report_on_#{@fname}_bucketed.csv"
+  puts "Outputting *bucketed* CSV at #{csvname}"
+  File.open(csvname, 'w') {|f|
+    puts "Country, Active (5+/month), Very active (100+/month)"
+    @active.keys.sort.each {|k| f.puts "#{k},#{@active[k].nil? ? 0 : b(@active[k])},#{@very_active[k].nil? ? 0 : b(@very_active[k])}"}
+  }
+end
 def usage
   puts "run this script with the name of a CSV file as an argument, to produce two reports (bucketed and unbucketed)\n\nFor example:\n\n  ruby active_eds_by_country.rb en_all.csv\n\nObtain those CSV files from https://stats.wikimedia.org/geowiki-private/"
   exit 0
@@ -92,4 +99,5 @@ make_report # without bucketing
 @bucket = true
 make_report # then bucketed
 make_wiki_report # make a wiki-ready version of the bucketed numbers
+make_bucketed_csv # make a bucketed version of the CSV, too
 puts "done!"
