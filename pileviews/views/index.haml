@@ -1,0 +1,17 @@
+%h1= 'Pileviews!'
+
+%form{method: :post, action: '/pileviews/make_csv'}
+  %label
+    = 'Enter '
+    %a{ href: 'https://tools.wmflabs.org/pagepile/'}
+      = 'PagePile ID'
+  %nbsp
+  %input{ name: 'pile_id'}
+  %input{ type: 'submit'}
+%p
+%p= 'After clicking submit, wait patiently, and if all goes well, your browser will download a CSV file automatically.'
+%hr
+%p
+  = 'Report bugs to '
+  %a{ href: 'mailto:asaf.bartov@gmail.com'}
+    = 'asaf.bartov@gmail.com'
