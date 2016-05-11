@@ -1,0 +1,9 @@
+{
+    "name" : "pileviews",
+    "title" : "Pileviews",
+    "description" : "make a CSV with pageview data for a given PagePile ID",
+    "url" : "https://tools.wmflabs.org/pileviews",
+    "keywords" : "pageviews, page views, csv, pagepile",
+    "author" : "Asaf Bartov",
+    "repository" : "https://github.com/abartov/wikimedia_tools/pileviews"
+}
