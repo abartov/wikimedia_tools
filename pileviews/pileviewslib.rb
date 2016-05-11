@@ -38,45 +38,39 @@ def get_views(article, wikiname,today)
   return by_month
 end
 
-def pileviews(pile_id)
-  print "Getting article list by PagePile ID #{ARGV[0]}... "
-	articles = get_articles(ARGV[0])
-	print "done!\nGetting pageviews... "
-	i = 0
-	views = []
-	today = Date.today.to_s.gsub('-','')
-	articles['pages'].each {|art|
-		i += 1
-		views << { :art => art, :views => get_views(art, articles['wiki'],today) }
-		print "#{i}... " if i % 10 == 0
-	}
-	print "done!\nWriting CSV file pagepile_#{ARGV[0]}.csv... "
-	# TODO: write CSV
-	File.open("pagepile_#{ARGV[0]}.csv",'w') {|f|
-	  # emit month headings first
-		line = 'Article name,'
-		views[0][:views].each {|v|
-		  line += "#{v[0][0..3]}-#{v[0][4..5]},"
-	  }
-	  line += 'Total'
-	  f.puts(line) 
-    views.each {|v|
-		  total = 0
-		  line = "\"#{v[:art]}\","
-		  next if v[:views].nil?
-  	  v[:views].each {|vv|
-		  line += "#{vv[1]},"
-		  total += vv[1] unless vv[1].nil? 
-    	}
-	    line += total.to_s
-	    f.puts(line)
-	  }
-	}
-	puts "done!"
+def pileviews_csv(pile_id)
+  articles = get_articles(pile_id)
+  views = []
+  today = Date.today.to_s.gsub('-','')
+  articles['pages'].each {|art| views << { :art => art, :views => get_views(art, articles['wiki'],today) } }
+  output = []
+  # emit month headings first
+  line = 'Article name,'
+  views[0][:views].each {|v|
+    line += "#{v[0][0..3]}-#{v[0][4..5]},"
+  }
+  line += 'Total'
+  output << line
+
+  views.each {|v|
+    total = 0
+    line = "\"#{v[:art]}\","
+    next if v[:views].nil?
+    v[:views].each {|vv|
+      line += "#{vv[1]},"
+      total += vv[1] unless vv[1].nil? 
+    }
+    line += total.to_s
+    output << line
+  }
+  return output.join("\n")
 end
 
-class RequestController
-  def call(env)
-    [200, {}, ["Hello World"]]
-  end
+def pileviews(pile_id)
+  File.open("pagepile_#{pile_id}.csv", 'w') {|f| f.puts(pileviews_csv(pile_id))}
 end
+#class RequestController
+#  def call(env)
+#    [200, {}, ["Hello World"]]
+#  end
+#end
