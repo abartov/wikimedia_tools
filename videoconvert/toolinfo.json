@@ -1,0 +1,9 @@
+{
+    "name" : "videoconvert",
+    "title" : "VideoConvert",
+    "description" : "convert MP4 videos to Ogg and upload them to Commons",
+    "url" : "tools.wmflabs.org/videoconvert/index.php",
+    "keywords" : "commons, media, video, mp4, ogg, convert, converter, conversion, upload",
+    "author" : "User:Prolineserver",
+    "repository" : ""
+}
