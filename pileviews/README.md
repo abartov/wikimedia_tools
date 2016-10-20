@@ -11,7 +11,7 @@ ruby pileviews.rb <PagePile ID>
 ```
 
 ##Web version
-A Web-hosted version is [available on Wikimedia Tool Labs](https://tools.wmflabs.org/pileviews)
+A Web-hosted version is [available on Wikimedia Tool Labs](https://tools.wmflabs.org/pileviews).  Run **start.sh** to start it with a grabbed port in the Tool Labs environment.
 
 ##Author
 
