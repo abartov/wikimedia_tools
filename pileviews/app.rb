@@ -8,7 +8,11 @@ configure do
   set :bind, '0.0.0.0'
   set :port, ENV['PILEVIEWS_PORT']
 end
-get '/pileviews' do
+get '/' do 
+  haml :index
+end
+
+get '/pileviews/' do
   haml :index
 end
 
