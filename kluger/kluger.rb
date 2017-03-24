@@ -30,7 +30,10 @@ run with -4 to create a Pattypan-compatible upload XML
 Each stage will take a while, and will report progress.
 
 When done scraping and downloading, use Pattypan or equivalent batch uploader to upload to Commons
+
+You get the stats for free today! :)
   EOF
+  status
   exit
 end
 
@@ -50,6 +53,7 @@ def grab_item_popup(box, year)
   close.exist?
   close.click
 end
+
 def prepare
   print "Preparing empty database kluger.db... "
   db = SQLite3::Database.new "kluger.db"
@@ -111,6 +115,19 @@ def populate
   puts "POPULATE phase done.  You are ready to run 'ruby kluger.rb -2' now."
 end
 
+def status
+  db = SQLite3::Database.new "kluger.db"
+  db.results_as_hash = true
+  total_count = db.execute("SELECT COUNT(id) FROM items")[0]['COUNT(id)']
+  urls_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", URLS)[0]['COUNT(id)']
+  metadata_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", METADATA)[0]['COUNT(id)']
+  downloaded_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", DOWNLOADED)[0]['COUNT(id)']
+  missing_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", MISSING)[0]['COUNT(id)']
+  download_error_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", DOWNLOAD_ERROR)[0]['COUNT(id)']
+  exported_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", EXPORTED)[0]['COUNT(id)']
+  puts "Stats:\n\n#{total_count} total items known.  Of those:\n#{exported_count} exported, #{downloaded_count} downloaded, #{metadata_count} got metadata but not downloaded, #{urls_count} got basic URLs but no full metadata, #{missing_count} missing images at archive, #{download_error_count} download errors"
+end
+
 # main
 puts 'kluger.rb v0.1'
 opts = GetoptLong.new(
@@ -119,7 +136,8 @@ opts = GetoptLong.new(
   [ '--populate', '-1', GetoptLong::NO_ARGUMENT ],
   [ '--scrape', '-2', GetoptLong::NO_ARGUMENT],
   [ '--download', '-3', GetoptLong::NO_ARGUMENT],
-  [ '--make-xml', '-4', GetoptLong::NO_ARGUMENT]
+  [ '--make-xml', '-4', GetoptLong::NO_ARGUMENT],
+  [ '--status', '-s', GetoptLong::NO_ARGUMENT]
 )
 did_something = false
 opts.each {|opt, arg|
