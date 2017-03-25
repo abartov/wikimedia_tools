@@ -67,7 +67,7 @@ def prepare
     db.execute('DROP TABLE items;')
   rescue
   end
-  db.execute('CREATE TABLE items (id integer primary key autoincrement, item_url varchar(400), download_url varchar(400), thumb_url varchar(400), title varchar(400), description varchar(400), year varchar(20), date_taken varchar(40), events varchar(400), places varchar(400), people varchar(500), status int)')
+  db.execute('CREATE TABLE items (id integer primary key autoincrement, item_url varchar(400), download_url varchar(400), thumb_url varchar(400), title varchar(400), description varchar(400), year varchar(20), date_taken varchar(40), events varchar(400), places varchar(400), people varchar(500), fileno varchar(500), status int)')
   puts "done!\nYou are ready to run 'ruby kluger.rb -1' now."
 end
 
@@ -110,7 +110,7 @@ def populate
           res = db.execute("SELECT id FROM items WHERE item_url = ?", item[:item_url])[0] # check whether already exists
         rescue
         end
-        db.execute('INSERT INTO items VALUES (NULL, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, NULL, ?)', item[:item_url], item[:download_url], item[:thumb_url], item[:title], item[:year], URLS ) if res.nil? # don't insert duplicates, just in case
+        db.execute('INSERT INTO items VALUES (NULL, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, NULL, NULL, ?)', item[:item_url], item[:download_url], item[:thumb_url], item[:title], item[:year], URLS ) if res.nil? # don't insert duplicates, just in case
         f.print(item.values.to_csv)
       }
     }
@@ -153,6 +153,8 @@ def update_metadata(b, db, id, url)
       rec['description'] = h2.parent.p.text
     when 'שם מקורי עברית' # original name in Hebrew
       rec['description'] = h2.parent.p.text # assuming won't co-exist with description, or that they'd be identical
+    when 'מספר תיק לציטוט' # file number in national archive
+      rec['fileno'] = h2.parent.p.text
     when 'תקופת החומר עד'
       to = h2.parent.p.text
     when 'תקופת החומר מ'
