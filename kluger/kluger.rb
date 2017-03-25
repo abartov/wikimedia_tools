@@ -23,8 +23,8 @@ Scraper for Zoltan Kluger collection at the Israeli National Archive
 
 run with -0 to prepare an empty (Sqlite) database
 run with -1 to do initial scrape and create item database
-run with -2 to do metadata scraping for all items
-run with -3 to download full images
+run with -2 [max_items] to do metadata scraping for all items (or up to max_items)
+run with -3 [max_items] to download full images for all items (or up to max_items)
 run with -4 to create a Pattypan-compatible upload XML
 
 Each stage will take a while, and will report progress.
@@ -35,6 +35,12 @@ You get the stats for free today! :)
   EOF
   status
   exit
+end
+
+def get_db
+  db = SQLite3::Database.new "kluger.db"
+  db.results_as_hash = true
+  return db
 end
 
 def grab_item_popup(box, year)
@@ -56,20 +62,18 @@ end
 
 def prepare
   print "Preparing empty database kluger.db... "
-  db = SQLite3::Database.new "kluger.db"
-  db.results_as_hash = true
+  db = get_db
   begin
     db.execute('DROP TABLE items;')
   rescue
   end
-  db.execute('CREATE TABLE items (id integer primary key autoincrement, item_url varchar(400), download_url varchar(400), thumb_url varchar(400), title varchar(400), description varchar(400), year varchar(20), date_taken varchar(40), places varchar(200), people varchar(500), status int)')
+  db.execute('CREATE TABLE items (id integer primary key autoincrement, item_url varchar(400), download_url varchar(400), thumb_url varchar(400), title varchar(400), description varchar(400), year varchar(20), date_taken varchar(40), events varchar(400), places varchar(400), people varchar(500), status int)')
   puts "done!\nYou are ready to run 'ruby kluger.rb -1' now."
 end
 
 def populate
   puts "Opening database"
-  db = SQLite3::Database.new "kluger.db"
-  db.results_as_hash = true
+  db = get_db
   puts "Starting Watir and Firefox"
   @totals = {}
   @data = {}
@@ -106,7 +110,7 @@ def populate
           res = db.execute("SELECT id FROM items WHERE item_url = ?", item[:item_url])[0] # check whether already exists
         rescue
         end
-        db.execute('INSERT INTO items VALUES (NULL, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, ?)', item[:item_url], item[:download_url], item[:thumb_url], item[:title], item[:year], URLS ) if res.nil? # don't insert duplicates, just in case
+        db.execute('INSERT INTO items VALUES (NULL, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, NULL, ?)', item[:item_url], item[:download_url], item[:thumb_url], item[:title], item[:year], URLS ) if res.nil? # don't insert duplicates, just in case
         f.print(item.values.to_csv)
       }
     }
@@ -116,8 +120,7 @@ def populate
 end
 
 def status
-  db = SQLite3::Database.new "kluger.db"
-  db.results_as_hash = true
+  db = get_db
   total_count = db.execute("SELECT COUNT(id) FROM items")[0]['COUNT(id)']
   urls_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", URLS)[0]['COUNT(id)']
   metadata_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", METADATA)[0]['COUNT(id)']
@@ -128,14 +131,65 @@ def status
   puts "Stats:\n\n#{total_count} total items known.  Of those:\n#{exported_count} exported, #{downloaded_count} downloaded, #{metadata_count} got metadata but not downloaded, #{urls_count} got basic URLs but no full metadata, #{missing_count} missing images at archive, #{download_error_count} download errors"
 end
 
+def update_metadata(b, db, id, url)
+  b.goto url
+  rec = {}
+  itemdata = b.div(id: 'item-data')
+  itemdata.wait_until_present
+  itemdata.div(id: 'show-more-metas').click # show extra metadata, including date
+  from = nil
+  to = nil
+  itemdata.h2s.each {|h2|
+    case h2.text
+    when 'תאריך התצלום' # date of photo
+      rec['date_taken'] = h2.parent.p.text 
+    when 'ארועים' # events
+      rec['events'] = h2.parent.ul.text
+    when 'מקום' # places
+      rec['places'] = h2.parent.ul.text
+    when 'אישים' # people
+      rec['people'] = h2.parent.ul.text
+    when 'תיאור המסמך' # description
+      rec['description'] = h2.parent.p.text
+    when 'שם מקורי עברית' # original name in Hebrew
+      rec['description'] = h2.parent.p.text # assuming won't co-exist with description, or that they'd be identical
+    when 'תקופת החומר עד'
+      to = h2.parent.p.text
+    when 'תקופת החומר מ'
+      from = h2.parent.p.text
+    end
+  }
+  rec['date_taken'] = "בין #{from} ל-#{to}" unless from.nil? or to.nil? or (not rec['date_taken'].nil?) # a little hack for approximate dates when no concrete date is known
+  return false if rec.keys.count == 0
+  statement_stub = 'UPDATE items SET '
+  rec.keys.each{|k|
+    st = "#{statement_stub} #{k} = ? WHERE id = ?"
+    db.execute(st, rec[k], id) # yeah, lazy to do separate UPDATEs for each value.  Doesn't matter for this one-time scraping.
+  }
+  db.execute(statement_stub+' status = ? WHERE id = ?', METADATA, id) # mark as done
+  return true
+end
+
+def scrape(max)
+  db = get_db
+  urls_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", URLS)[0]['COUNT(id)']
+  puts "Scraping full metadata for #{max.nil? ? urls_count : max} out of a total of #{urls_count} URLs without metadata..."
+  browser = Watir::Browser.new :firefox
+  total_updated = 0
+  db.execute("SELECT id, item_url FROM items WHERE status = ?"+(max.nil? ? '' : " LIMIT #{max}"), URLS) do |row|
+    total_updated += 1 if update_metadata(browser, db, row['id'], row['item_url'])
+  end
+  puts "updated #{total_updated} records out of #{urls_count} attempted."
+end
+
 # main
 puts 'kluger.rb v0.1'
 opts = GetoptLong.new(
   [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
   [ '--prepare', '-0', GetoptLong::NO_ARGUMENT ],
   [ '--populate', '-1', GetoptLong::NO_ARGUMENT ],
-  [ '--scrape', '-2', GetoptLong::NO_ARGUMENT],
-  [ '--download', '-3', GetoptLong::NO_ARGUMENT],
+  [ '--scrape', '-2', GetoptLong::OPTIONAL_ARGUMENT],
+  [ '--download', '-3', GetoptLong::OPTIONAL_ARGUMENT],
   [ '--make-xml', '-4', GetoptLong::NO_ARGUMENT],
   [ '--status', '-s', GetoptLong::NO_ARGUMENT]
 )
@@ -152,10 +206,10 @@ opts.each {|opt, arg|
       populate
       did_something = true
     when '--scrape'
-      scrape
+      scrape(arg)
       did_something = true
     when '--download'
-      download
+      download(arg)
       did_something = true
     when '--make-xml'
       make_xml
