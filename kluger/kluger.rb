@@ -190,6 +190,7 @@ def download_image(db, id, url)
     File.open("full_images/kluger_#{id}.jpg", 'wb') do |fo|
       fo.write open(url).read
     end
+    db.execute("UPDATE items SET status = ? WHERE id = ?", DOWNLOADED, id)
   rescue
     db.execute("UPDATE items SET status = ? WHERE id = ?", DOWNLOAD_ERROR, id)
     return false
