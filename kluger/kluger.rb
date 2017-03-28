@@ -8,6 +8,7 @@ require 'csv'
 require 'getoptlong'
 require 'sqlite3'
 require 'nokogiri'
+require 'open-uri'
 
 # status codes
 URLS = 1
@@ -181,7 +182,34 @@ def scrape(max)
   db.execute("SELECT id, item_url FROM items WHERE status = ?"+(max.nil? ? '' : " LIMIT #{max}"), URLS) do |row|
     total_updated += 1 if update_metadata(browser, db, row['id'], row['item_url'])
   end
-  puts "updated #{total_updated} records out of #{urls_count} attempted."
+  puts "updated #{total_updated} records out of #{urls_count} attempted. You can run kluger.rb -3 now to actually download the full images."
+end
+
+def download_image(db, id, url)
+  begin
+    File.open("full_images/kluger_#{id}.jpg", 'wb') do |fo|
+      fo.write open(url).read
+    end
+  rescue
+    db.execute("UPDATE items SET status = ? WHERE id = ?", DOWNLOAD_ERROR, id)
+    return false
+  end
+end
+
+def download(max)
+  db = get_db
+  metadata_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", METADATA)[0]['COUNT(id)']
+  downloaded_count = db.execute("SELECT COUNT(id) FROM items WHERE status = ?", DOWNLOADED)[0]['COUNT(id)']
+  todo = max.nil? ? metadata_count : max
+  puts "Downloading #{todo} full images out of a total of #{metadata_count} still to be done..."
+  total_downloaded = 0
+  `mkdir ./full_images > /dev/null` # lazily make sure the directory exists
+  db.execute("SELECT id, download_url FROM items WHERE status = ?"+(max.nil? ? '' : " LIMIT #{max}"), METADATA) do |row|
+    total_downloaded += 1 if download_image(db, row['id'], row['download_url'])
+  end
+end
+
+def make_xml
 end
 
 # main
